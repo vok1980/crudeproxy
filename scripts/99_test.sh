@@ -23,8 +23,8 @@ echo "http://example.com -> $code"
 [ "$code" = "200" ] || { echo "ERROR: expected 200" >&2; exit 1; }
 
 echo "==> http block"
-code=$(curl -s -o /dev/null -w '%{http_code}' -x http://127.0.0.1:8888 http://facebook.com)
-echo "http://facebook.com -> $code"
+code=$(curl -s -o /dev/null -w '%{http_code}' -x http://127.0.0.1:8888 http://ad.mail.ru)
+echo "http://ad.mail.ru -> $code"
 [ "$code" = "403" ] || { echo "ERROR: expected 403" >&2; exit 1; }
 
 echo "==> reload"
