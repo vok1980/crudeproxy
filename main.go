@@ -36,36 +36,7 @@ var (
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 	}
-
-	hopHeaders = []string{
-		"Connection",
-		"Keep-Alive",
-		"Proxy-Authenticate",
-		"Proxy-Authorization",
-		"Proxy-Connection",
-		"Te",
-		"Trailer",
-		"Transfer-Encoding",
-		"Upgrade",
-	}
 )
-
-// ---------- hop-by-hop headers ----------
-
-// stripHopByHop removes Connection-listed headers and the fixed hop-by-hop set.
-// Implements RFC 7230 section 6.1.
-func stripHopByHop(h http.Header) {
-	for _, f := range h["Connection"] {
-		for _, sf := range strings.Split(f, ",") {
-			if sf = strings.TrimSpace(sf); sf != "" {
-				h.Del(sf)
-			}
-		}
-	}
-	for _, k := range hopHeaders {
-		h.Del(k)
-	}
-}
 
 // ---------- logging ----------
 
