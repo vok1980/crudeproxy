@@ -17,7 +17,10 @@ import (
 	"time"
 )
 
-// ---------- entry point ----------
+// This file contains only the entry point (main) and the top-level
+// dispatcher (dispatch). Everything else lives in sibling files in the
+// same package: blocklist.go, log.go, headers.go, tunnel.go, proxy.go,
+// util.go.
 
 func main() {
 	listen := flag.String("listen", "127.0.0.1:8888", "listen address")
