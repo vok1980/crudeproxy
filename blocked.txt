@@ -1,0 +1,3 @@
+# crudeproxy: blocked domains list
+# one domain per line, # starts a comment
+
