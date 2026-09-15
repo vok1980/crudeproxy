@@ -7,14 +7,12 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -22,9 +20,6 @@ import (
 )
 
 var (
-	blockMutex sync.RWMutex
-	blockList  []string
-
 	accessLog *log.Logger
 
 	tunnelIdleTimeout *time.Duration
@@ -54,54 +49,6 @@ var (
 		"Upgrade",
 	}
 )
-
-// ---------- block list ----------
-
-func loadBlockList(path string) error {
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	var list []string
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		line = strings.ToLower(line)
-		line = strings.TrimPrefix(line, ".")
-		line = strings.TrimSuffix(line, ".")
-		list = append(list, line)
-	}
-	if err := scanner.Err(); err != nil {
-		return err
-	}
-
-	blockMutex.Lock()
-	blockList = list
-	blockMutex.Unlock()
-	return nil
-}
-
-func isBlocked(hostport string) bool {
-	host := hostport
-	if h, _, err := net.SplitHostPort(hostport); err == nil {
-		host = h
-	}
-	host = strings.ToLower(strings.TrimSuffix(host, "."))
-
-	blockMutex.RLock()
-	defer blockMutex.RUnlock()
-	for _, b := range blockList {
-		if host == b || strings.HasSuffix(host, "."+b) {
-			return true
-		}
-	}
-	return false
-}
 
 // ---------- hop-by-hop headers ----------
 
