@@ -11,7 +11,6 @@ import (
 	"flag"
 	"io"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -361,20 +360,6 @@ func handleConnect(w http.ResponseWriter, r *http.Request) {
 }
 
 // ---------- entry point ----------
-
-func isLoopbackListen(addr string) bool {
-	host, _, err := net.SplitHostPort(addr)
-	if err != nil {
-		return false
-	}
-	if host == "localhost" {
-		return true
-	}
-	if ip := net.ParseIP(host); ip != nil {
-		return ip.IsLoopback()
-	}
-	return false
-}
 
 func main() {
 	listen := flag.String("listen", "127.0.0.1:8888", "listen address")
