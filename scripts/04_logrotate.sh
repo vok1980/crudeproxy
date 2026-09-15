@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-tee /etc/logrotate.d/crudeproxy >/dev/null <<'EOF'
+sudo tee /etc/logrotate.d/crudeproxy >/dev/null <<'EOF'
 /var/log/crudeproxy/*.log {
     daily
     rotate 30
