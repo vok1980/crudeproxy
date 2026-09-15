@@ -21,7 +21,7 @@ cleanup() {
         kill "$PROXY_PID" 2>/dev/null || true
         wait "$PROXY_PID" 2>/dev/null || true
     fi
-    rm -f "$LOG_FILE" "$BLOCK_FILE"
+    rm -f "$LOG_FILE" "$BLOCK_FILE" "${AUTH_FILE:-}"
 }
 trap cleanup EXIT
 
@@ -163,6 +163,34 @@ if [ -d "/proc/$PROXY_PID/fd" ]; then
 else
     pass "skipped (no /proc)"
 fi
+
+# ---------------------------------------------------------------------------
+info "authentication"
+AUTH_FILE=$(mktemp -t crudeproxy-users.XXXXXX)
+echo "alice:secret" > "$AUTH_FILE"
+chmod 600 "$AUTH_FILE"
+
+# Restart proxy with auth
+kill "$PROXY_PID" 2>/dev/null || true
+wait "$PROXY_PID" 2>/dev/null || true
+./crudeproxy -listen "$PROXY_ADDR" -block "$BLOCK_FILE" -log "$LOG_FILE" \
+    -auth-file "$AUTH_FILE" -tunnel-idle-timeout "$IDLE_TIMEOUT" &
+PROXY_PID=$!
+sleep 0.3
+
+code=$(curl -s -o /dev/null -w '%{http_code}' -x "$PROXY_URL" --max-time 5 http://example.com/ || true)
+if [ "$code" = "407" ]; then pass "no credentials -> 407"; else fail "no credentials -> $code"; fi
+
+code=$(curl -s -o /dev/null -w '%{http_code}' -x "$PROXY_URL" --proxy-user alice:wrong --max-time 5 http://example.com/ || true)
+if [ "$code" = "407" ]; then pass "wrong password -> 407"; else fail "wrong password -> $code"; fi
+
+code=$(curl -s -o /dev/null -w '%{http_code}' -x "$PROXY_URL" --proxy-user alice:secret --max-time 10 http://example.com/)
+if [ "$code" = "200" ]; then pass "valid credentials -> 200"; else fail "valid credentials -> $code"; fi
+
+code=$(curl -s -o /dev/null -w '%{http_connect}' -x "$PROXY_URL" --proxy-user alice:secret --max-time 10 https://example.com/)
+if [ "$code" = "200" ]; then pass "CONNECT with credentials -> 200"; else fail "CONNECT with credentials -> $code"; fi
+
+rm -f "$AUTH_FILE"
 
 # ---------------------------------------------------------------------------
 echo

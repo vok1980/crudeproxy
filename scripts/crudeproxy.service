@@ -12,6 +12,7 @@ Group=crudeproxy
 ExecStart=/usr/local/bin/crudeproxy \
     -listen 0.0.0.0:8888 \
     -block /etc/crudeproxy/blocked.txt \
+    -auth-file /etc/crudeproxy/users.txt \
     -log /var/log/crudeproxy/access.log \
     -tunnel-idle-timeout 10m
 
