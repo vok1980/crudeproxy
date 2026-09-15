@@ -18,8 +18,6 @@ import (
 )
 
 var (
-	accessLog *log.Logger
-
 	transport = &http.Transport{
 		Proxy: nil, // do not use HTTP_PROXY from environment
 		DialContext: (&net.Dialer{
@@ -33,23 +31,6 @@ var (
 		ExpectContinueTimeout: 1 * time.Second,
 	}
 )
-
-// ---------- logging ----------
-
-func clientIP(remoteAddr string) string {
-	if ip, _, err := net.SplitHostPort(remoteAddr); err == nil {
-		return ip
-	}
-	return remoteAddr
-}
-
-func logEvent(status, client, method, host string, extra interface{}) {
-	if extra != nil {
-		accessLog.Printf("%s\t%s\t%s\t%s\t%v", status, client, method, host, extra)
-	} else {
-		accessLog.Printf("%s\t%s\t%s\t%s", status, client, method, host)
-	}
-}
 
 // ---------- HTTP ----------
 
