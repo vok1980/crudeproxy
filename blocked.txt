@@ -1,3 +1,6 @@
 # crudeproxy: blocked domains list
 # one domain per line, # starts a comment
 
+dmp.wi-fi.ru
+ad.mail.ru
+

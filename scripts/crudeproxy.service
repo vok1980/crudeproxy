@@ -1,0 +1,44 @@
+[Unit]
+Description=crudeproxy - forward HTTP/HTTPS proxy with domain filtering
+Documentation=https://github.com/vok1980/crudeproxy
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=crudeproxy
+Group=crudeproxy
+
+ExecStart=/usr/local/bin/crudeproxy \
+    -listen 0.0.0.0:8888 \
+    -block /etc/crudeproxy/blocked.txt \
+    -log /var/log/crudeproxy/access.log \
+    -tunnel-idle-timeout 10m
+
+ExecReload=/bin/kill -HUP $MAINPID
+
+Restart=on-failure
+RestartSec=5s
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/crudeproxy
+ReadOnlyPaths=/etc/crudeproxy
+
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=crudeproxy
+
+[Install]
+WantedBy=multi-user.target
