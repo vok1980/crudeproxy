@@ -105,10 +105,22 @@ Fields:
 6. Extra info: HTTP status code for `ALLOW` on plain HTTP, full URL for
    `BLOCK`, error message for `ERROR`. Empty for `ALLOW` on `CONNECT`.
 
-Top domains from the log:
+Top allowed domains:
 
 ```bash
-awk '$3=="ALLOW" {print $5}' access.log | sed 's/:.*//' | sort | uniq -c | sort -rn | head
+awk '$3=="ALLOW" {print $6}' access.log | sed 's/:.*//' | sort | uniq -c | sort -rn | head
+```
+
+Blocked attempts:
+
+```bash
+awk '$3=="BLOCK" {print $6}' access.log | sort | uniq -c | sort -rn
+```
+
+Errors:
+
+```bash
+awk '$3=="ERROR" {print $6}' access.log | sort | uniq -c | sort -rn
 ```
 
 ## Tests
