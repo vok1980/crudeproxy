@@ -6,4 +6,4 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 cd "${PROJECT_DIR}"
 CGO_ENABLED=0 go build -ldflags="-s -w" -o crudeproxy .
-install -m 755 crudeproxy /usr/local/bin/crudeproxy
+sudo install -m 755 crudeproxy /usr/local/bin/crudeproxy

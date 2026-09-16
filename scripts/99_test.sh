@@ -8,7 +8,7 @@ echo "==> config and log dirs"
 ls -la /etc/crudeproxy /var/log/crudeproxy
 
 echo "==> service status"
-systemctl status crudeproxy --no-pager || true
+sudo systemctl status crudeproxy --no-pager || true
 
 echo "==> listening socket"
 if ! ss -tlnp | grep -q ':8888'; then
@@ -28,10 +28,10 @@ echo "http://ad.mail.ru -> $code"
 [ "$code" = "403" ] || { echo "ERROR: expected 403" >&2; exit 1; }
 
 echo "==> reload"
-systemctl reload crudeproxy
+sudo systemctl reload crudeproxy
 
 echo "==> recent access log"
-tail -5 /var/log/crudeproxy/access.log
+sudo tail -5 /var/log/crudeproxy/access.log
 
 echo "==> recent journal"
-journalctl -u crudeproxy -n 20 --no-pager
+sudo journalctl -u crudeproxy -n 20 --no-pager

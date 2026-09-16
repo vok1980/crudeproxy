@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-systemctl daemon-reload
-systemctl enable crudeproxy
+sudo systemctl daemon-reload
+sudo systemctl enable crudeproxy
 
-if ! systemctl start crudeproxy; then
+if ! sudo systemctl start crudeproxy; then
     echo "crudeproxy failed to start; recent logs:" >&2
-    journalctl -u crudeproxy --no-pager -n 50 >&2 || true
+    sudo journalctl -u crudeproxy --no-pager -n 50 >&2 || true
     exit 1
 fi
 
-systemctl status crudeproxy --no-pager || true
+if ! sudo systemctl is-active --quiet crudeproxy; then
+    echo "crudeproxy is not active after start" >&2
+    sudo journalctl -u crudeproxy --no-pager -n 50 >&2 || true
+    exit 1
+fi
