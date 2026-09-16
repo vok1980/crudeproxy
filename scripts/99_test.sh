@@ -5,7 +5,7 @@ echo "==> binary"
 ls -la /usr/local/bin/crudeproxy
 
 echo "==> config and log dirs"
-ls -la /etc/crudeproxy /var/log/crudeproxy
+sudo ls -la /etc/crudeproxy /var/log/crudeproxy
 
 echo "==> service status"
 sudo systemctl status crudeproxy --no-pager || true
