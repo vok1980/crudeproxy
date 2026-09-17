@@ -21,7 +21,7 @@ beyond the Go standard library.
 
 - It does not decrypt HTTPS. Only the domain is visible for `CONNECT`
   requests, not the path, headers, or body.
-- It does not authenticate clients. Run it on a trusted network or behind
+- Authentication is optional clients. Run it on a trusted network or behind
   a firewall.
 - It does not cache responses. Every request goes to the origin.
 
