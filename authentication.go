@@ -25,16 +25,27 @@ var (
 // loadAuthFile reads a "user:password" file into memory. An empty path
 // disables authentication entirely.
 func loadAuthFile(path string) error {
+	users, err := readAuthUsers(path)
+	if err != nil {
+		return err
+	}
+	authMutex.Lock()
+	authUsers = users
+	authMutex.Unlock()
+	return nil
+}
+
+// readAuthUsers parses a user:password file and returns the map without
+// mutating global state. An empty path returns an empty map and no error,
+// meaning "authentication disabled".
+func readAuthUsers(path string) (map[string]string, error) {
 	if path == "" {
-		authMutex.Lock()
-		authUsers = nil
-		authMutex.Unlock()
-		return nil
+		return nil, nil
 	}
 
 	f, err := os.Open(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer f.Close()
 
@@ -43,24 +54,26 @@ func loadAuthFile(path string) error {
 	lineNo := 0
 	for scanner.Scan() {
 		lineNo++
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
+		line := scanner.Text()
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
 			continue
 		}
 		user, pass, ok := strings.Cut(line, ":")
 		if !ok || user == "" {
-			return fmt.Errorf("%s:%d: expected user:password", path, lineNo)
+			return nil, fmt.Errorf("%s:%d: expected user:password", path, lineNo)
 		}
 		users[user] = pass
 	}
 	if err := scanner.Err(); err != nil {
-		return err
+		return nil, err
 	}
-
-	authMutex.Lock()
-	authUsers = users
-	authMutex.Unlock()
-	return nil
+	// Fail-closed: an empty but existing file is a configuration error.
+	// The operator explicitly enabled auth by passing -auth-file.
+	if len(users) == 0 {
+		return nil, fmt.Errorf("%s: no users configured", path)
+	}
+	return users, nil
 }
 
 // parseProxyBasicAuth parses a Proxy-Authorization header value using the
