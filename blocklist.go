@@ -24,9 +24,22 @@ var (
 // ignored. Leading and trailing dots are stripped. Domains are matched
 // case-insensitively.
 func loadBlockList(path string) error {
-	f, err := os.Open(path)
+	list, err := readBlockList(path)
 	if err != nil {
 		return err
+	}
+	blockMutex.Lock()
+	blockList = list
+	blockMutex.Unlock()
+	return nil
+}
+
+// readBlockList parses a block list file and returns the entries without
+// mutating global state.
+func readBlockList(path string) ([]string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
 	}
 	defer f.Close()
 
@@ -43,13 +56,9 @@ func loadBlockList(path string) error {
 		list = append(list, line)
 	}
 	if err := scanner.Err(); err != nil {
-		return err
+		return nil, err
 	}
-
-	blockMutex.Lock()
-	blockList = list
-	blockMutex.Unlock()
-	return nil
+	return list, nil
 }
 
 // isBlocked reports whether hostport matches any entry in the block list.

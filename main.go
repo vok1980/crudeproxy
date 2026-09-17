@@ -60,23 +60,33 @@ func main() {
 	// SIGHUP triggers block list reload without restart
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGHUP)
+
 	go func() {
 		for range sigCh {
-			if err := loadBlockList(*blockFile); err != nil {
-				log.Printf("reload block list: %v", err)
+			newBlockList, err1 := readBlockList(*blockFile)
+			newAuthUsers, err2 := readAuthUsers(*authFile)
+
+			if err1 != nil || err2 != nil {
+				if err1 != nil {
+					log.Printf("reload block list: %v", err1)
+				}
+				if err2 != nil {
+					log.Printf("reload auth file: %v", err2)
+				}
+				log.Printf("reload: keeping previous configuration")
 				continue
 			}
-			if err := loadAuthFile(*authFile); err != nil {
-				log.Printf("reload auth file: %v", err)
-				continue
-			}
-			blockMutex.RLock()
-			n := len(blockList)
-			blockMutex.RUnlock()
-			authMutex.RLock()
-			m := len(authUsers)
-			authMutex.RUnlock()
-			log.Printf("reload: %d blocked domains, %d users", n, m)
+
+			blockMutex.Lock()
+			blockList = newBlockList
+			blockMutex.Unlock()
+
+			authMutex.Lock()
+			authUsers = newAuthUsers
+			authMutex.Unlock()
+
+			log.Printf("reload: %d blocked domains, %d users",
+				len(newBlockList), len(newAuthUsers))
 		}
 	}()
 
