@@ -118,13 +118,14 @@ func targetHost(r *http.Request) string {
 func dispatch(w http.ResponseWriter, r *http.Request) {
 	client := clientIP(r.RemoteAddr)
 
-	if !authRequired(w, r, client) {
+	user, ok := authRequired(w, r, client)
+	if !ok {
 		return
 	}
 
 	if r.Method == http.MethodConnect {
-		handleConnect(w, r)
+		handleConnect(w, r, user)
 		return
 	}
-	handleHTTP(w, r)
+	handleHTTP(w, r, user)
 }
