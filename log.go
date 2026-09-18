@@ -23,10 +23,10 @@ func clientIP(remoteAddr string) string {
 
 // logEvent writes one tab-separated line to the access log. The extra
 // argument is optional; when nil, the line ends after the host.
-func logEvent(status, client, method, host string, extra interface{}) {
+func logEvent(status, client, user, method, host string, extra interface{}) {
 	if extra != nil {
-		accessLog.Printf("%s\t%s\t%s\t%s\t%v", status, client, method, host, extra)
+		accessLog.Printf("%s\t%s\t%s\t%s\t%s\t%v", status, client, user, method, host, extra)
 	} else {
-		accessLog.Printf("%s\t%s\t%s\t%s", status, client, method, host)
+		accessLog.Printf("%s\t%s\t%s\t%s\t%s", status, client, user, method, host)
 	}
 }

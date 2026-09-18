@@ -26,12 +26,16 @@ func main() {
 	listen := flag.String("listen", "127.0.0.1:8888", "listen address")
 	blockFile := flag.String("block", "blocked.txt", "path to block list file")
 	logFile := flag.String("log", "", "log file path (empty means stdout)")
+	authFile := flag.String("auth-file", "", "path to proxy users file (user:password per line); empty disables authentication")
 	tunnelIdleTimeout = flag.Duration("tunnel-idle-timeout", 10*time.Minute,
 		"idle timeout for CONNECT tunnel directions; 0 disables it")
 	flag.Parse()
 
 	if err := loadBlockList(*blockFile); err != nil {
 		log.Fatalf("failed to load block list: %v", err)
+	}
+	if err := loadAuthFile(*authFile); err != nil {
+		log.Fatalf("failed to load auth file: %v", err)
 	}
 	blockMutex.RLock()
 	log.Printf("loaded %d domains into block list", len(blockList))
@@ -48,7 +52,7 @@ func main() {
 	}
 	accessLog = log.New(logWriter, "", log.LstdFlags)
 
-	if !isLoopbackListen(*listen) {
+	if !isLoopbackListen(*listen) && *authFile == "" {
 		log.Printf("WARNING: listening on %s without authentication; "+
 			"this is an open proxy — anyone who can reach this port can use it", *listen)
 	}
@@ -56,15 +60,33 @@ func main() {
 	// SIGHUP triggers block list reload without restart
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGHUP)
+
 	go func() {
 		for range sigCh {
-			if err := loadBlockList(*blockFile); err != nil {
-				log.Printf("reload: %v", err)
+			newBlockList, err1 := readBlockList(*blockFile)
+			newAuthUsers, err2 := readAuthUsers(*authFile)
+
+			if err1 != nil || err2 != nil {
+				if err1 != nil {
+					log.Printf("reload block list: %v", err1)
+				}
+				if err2 != nil {
+					log.Printf("reload auth file: %v", err2)
+				}
+				log.Printf("reload: keeping previous configuration")
 				continue
 			}
-			blockMutex.RLock()
-			log.Printf("reload: %d domains", len(blockList))
-			blockMutex.RUnlock()
+
+			blockMutex.Lock()
+			blockList = newBlockList
+			blockMutex.Unlock()
+
+			authMutex.Lock()
+			authUsers = newAuthUsers
+			authMutex.Unlock()
+
+			log.Printf("reload: %d blocked domains, %d users",
+				len(newBlockList), len(newAuthUsers))
 		}
 	}()
 
@@ -80,10 +102,30 @@ func main() {
 	}
 }
 
-func dispatch(w http.ResponseWriter, r *http.Request) {
+// targetHost returns the request target for logging: the CONNECT authority
+// for CONNECT requests, the URL host for forward-proxied HTTP requests,
+// and the Host header as a last resort.
+func targetHost(r *http.Request) string {
 	if r.Method == http.MethodConnect {
-		handleConnect(w, r)
+		return r.Host
+	}
+	if r.URL != nil && r.URL.Host != "" {
+		return r.URL.Host
+	}
+	return r.Host
+}
+
+func dispatch(w http.ResponseWriter, r *http.Request) {
+	client := clientIP(r.RemoteAddr)
+
+	user, ok := authRequired(w, r, client)
+	if !ok {
 		return
 	}
-	handleHTTP(w, r)
+
+	if r.Method == http.MethodConnect {
+		handleConnect(w, r, user)
+		return
+	}
+	handleHTTP(w, r, user)
 }
