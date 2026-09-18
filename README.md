@@ -121,38 +121,46 @@ kill -HUP $(pgrep crudeproxy)
 Tab-separated, one line per request:
 
 ```
-2026/09/15 12:46:24  ALLOW  127.0.0.1  GET      example.com      200
-2026/09/15 12:46:24  BLOCK  127.0.0.1  GET      facebook.com     http://facebook.com/
-2026/09/15 12:46:24  ALLOW  127.0.0.1  CONNECT  example.com:443
-2026/09/15 12:46:27  ERROR  127.0.0.1  CONNECT  unreachable.host  dial tcp: i/o timeout
+2026/09/15 12:46:24  ALLOW  user1  127.0.0.1  GET      example.com      200
+2026/09/15 12:46:24  BLOCK  user1  127.0.0.1  GET      facebook.com     http://facebook.com/
+2026/09/15 12:46:24  ALLOW  user1  127.0.0.1  CONNECT  example.com:443
+2026/09/15 12:46:27  ERROR  user1  127.0.0.1  CONNECT  unreachable.host  dial tcp: i/o timeout
 ```
 
 Fields:
 
 1. Timestamp
 2. Status: `ALLOW`, `BLOCK`, or `ERROR`
-3. Client IP
-4. HTTP method (`GET`, `POST`, `CONNECT`, ...)
-5. Target host (with port for `CONNECT`)
-6. Extra info: HTTP status code for `ALLOW` on plain HTTP, full URL for
+3. User (or `-` when authentication is disabled or the request
+   carried no credentials)
+4. Client IP
+5. HTTP method (`GET`, `POST`, `CONNECT`, ...)
+6. Target host (with port for `CONNECT`)
+7. Extra info: HTTP status code for `ALLOW` on plain HTTP, full URL for
    `BLOCK`, error message for `ERROR`. Empty for `ALLOW` on `CONNECT`.
 
 Top allowed domains:
 
 ```bash
-awk '$3=="ALLOW" {print $6}' access.log | sed 's/:.*//' | sort | uniq -c | sort -rn | head
+awk '$3=="ALLOW" {print $7}' access.log | sed 's/:.*//' | sort | uniq -c | sort -rn | head
 ```
 
 Blocked attempts:
 
 ```bash
-awk '$3=="BLOCK" {print $6}' access.log | sort | uniq -c | sort -rn
+awk '$3=="BLOCK" {print $7}' access.log | sort | uniq -c | sort -rn
 ```
 
 Errors:
 
 ```bash
-awk '$3=="ERROR" {print $6}' access.log | sort | uniq -c | sort -rn
+awk '$3=="ERROR" {print $7}' access.log | sort | uniq -c | sort -rn
+```
+
+Requests by user:
+
+```bash
+awk '{print $3}' access.log | sort | uniq -c | sort -rn
 ```
 
 ## Tests

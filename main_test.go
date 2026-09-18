@@ -329,7 +329,8 @@ func TestLoadAuthFileEmptyDisables(t *testing.T) {
 func TestCheckAuthDisabled(t *testing.T) {
 	_ = loadAuthFile("")
 	req := httptest.NewRequest("GET", "http://example.com/", nil)
-	if !checkAuth(req) {
+	_, ok := checkAuth(req)
+	if !ok {
 		t.Fatal("auth should be disabled when no users are loaded")
 	}
 }
@@ -354,16 +355,32 @@ func TestCheckAuth(t *testing.T) {
 		return req
 	}
 
-	if !checkAuth(mkReq("alice", "secret")) {
+	user, ok := checkAuth(mkReq("alice", "secret"))
+	if !ok {
 		t.Error("valid credentials should pass")
 	}
-	if checkAuth(mkReq("alice", "wrong")) {
+	if user != "alice" {
+		t.Errorf("expected user alice, got %q", user)
+	}
+
+	user, ok = checkAuth(mkReq("alice", "wrong"))
+	if ok {
 		t.Error("wrong password should fail")
 	}
-	if checkAuth(mkReq("bob", "secret")) {
+	if user != "alice" {
+		t.Errorf("expected user alice even on wrong password, got %q", user)
+	}
+
+	user, ok = checkAuth(mkReq("bob", "secret"))
+	if ok {
 		t.Error("unknown user should fail")
 	}
-	if checkAuth(mkReq("", "")) {
+	if user != "bob" {
+		t.Errorf("expected user bob even on unknown, got %q", user)
+	}
+
+	_, ok = checkAuth(mkReq("", ""))
+	if ok {
 		t.Error("missing header should fail")
 	}
 }

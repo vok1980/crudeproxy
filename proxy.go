@@ -32,7 +32,7 @@ var transport = &http.Transport{
 // handleHTTP forwards a plain HTTP request to the origin server. The
 // request target must be in absolute form (http://host/path), which is
 // what clients send to a forward proxy.
-func handleHTTP(w http.ResponseWriter, r *http.Request) {
+func handleHTTP(w http.ResponseWriter, r *http.Request, user string) {
 	if r.URL == nil || r.URL.Host == "" {
 		http.Error(w, "crudeproxy: missing absolute URL", http.StatusBadRequest)
 		return
@@ -42,7 +42,7 @@ func handleHTTP(w http.ResponseWriter, r *http.Request) {
 	client := clientIP(r.RemoteAddr)
 
 	if isBlocked(host) {
-		logEvent("BLOCK", client, r.Method, host, r.URL.String())
+		logEvent("BLOCK", client, user, r.Method, host, r.URL.String())
 		http.Error(w, "Blocked by crudeproxy", http.StatusForbidden)
 		return
 	}
@@ -52,7 +52,7 @@ func handleHTTP(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := transport.RoundTrip(r)
 	if err != nil {
-		logEvent("ERROR", client, r.Method, host, err)
+		logEvent("ERROR", client, user, r.Method, host, err)
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
@@ -68,29 +68,29 @@ func handleHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(resp.StatusCode)
 
 	if _, err := io.Copy(w, resp.Body); err != nil {
-		logEvent("ERROR", client, r.Method, host, err)
+		logEvent("ERROR", client, user, r.Method, host, err)
 		return
 	}
 
-	logEvent("ALLOW", client, r.Method, host, resp.StatusCode)
+	logEvent("ALLOW", client, user, r.Method, host, resp.StatusCode)
 }
 
 // handleConnect establishes a TCP tunnel for an HTTPS CONNECT request.
 // The domain is filtered before dialing; the tunnel itself is opaque,
 // so no TLS interception happens here.
-func handleConnect(w http.ResponseWriter, r *http.Request) {
+func handleConnect(w http.ResponseWriter, r *http.Request, user string) {
 	host := r.Host
 	client := clientIP(r.RemoteAddr)
 
 	if isBlocked(host) {
-		logEvent("BLOCK", client, "CONNECT", host, nil)
+		logEvent("BLOCK", client, user, "CONNECT", host, nil)
 		http.Error(w, "Blocked by crudeproxy", http.StatusForbidden)
 		return
 	}
 
 	destConn, err := net.DialTimeout("tcp", host, 10*time.Second)
 	if err != nil {
-		logEvent("ERROR", client, "CONNECT", host, err)
+		logEvent("ERROR", client, user, "CONNECT", host, err)
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
@@ -111,15 +111,15 @@ func handleConnect(w http.ResponseWriter, r *http.Request) {
 	// Write the 200 via the buffered writer and flush, otherwise
 	// buffered bytes already read from the client may be lost.
 	if _, err := bufrw.WriteString("HTTP/1.1 200 Connection Established\r\n\r\n"); err != nil {
-		logEvent("ERROR", client, "CONNECT", host, err)
+		logEvent("ERROR", client, user, "CONNECT", host, err)
 		return
 	}
 	if err := bufrw.Flush(); err != nil {
-		logEvent("ERROR", client, "CONNECT", host, err)
+		logEvent("ERROR", client, user, "CONNECT", host, err)
 		return
 	}
 
-	logEvent("ALLOW", client, "CONNECT", host, nil)
+	logEvent("ALLOW", client, user, "CONNECT", host, nil)
 
 	idle := *tunnelIdleTimeout
 	if idle <= 0 {

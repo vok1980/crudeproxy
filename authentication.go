@@ -96,39 +96,40 @@ func parseProxyBasicAuth(header string) (user, pass string, ok bool) {
 
 // checkAuth reports whether the request carries valid proxy credentials.
 // If no users are configured, it returns true (auth disabled).
-func checkAuth(r *http.Request) bool {
+func checkAuth(r *http.Request) (string, bool) {
 	authMutex.RLock()
 	users := authUsers
 	authMutex.RUnlock()
 
 	if len(users) == 0 {
-		return true
+		return "", true
 	}
 
 	user, pass, ok := parseProxyBasicAuth(r.Header.Get("Proxy-Authorization"))
 	if !ok {
-		return false
+		return user, false
 	}
 
 	expected, exists := users[user]
 	if !exists {
-		return false
+		return user, false
 	}
-	return subtle.ConstantTimeCompare([]byte(pass), []byte(expected)) == 1
+	return user, subtle.ConstantTimeCompare([]byte(pass), []byte(expected)) == 1
 }
 
 // authRequired writes a 407 response and returns false if the request
 // carries no valid credentials. It returns true otherwise.
-func authRequired(w http.ResponseWriter, r *http.Request, client string) bool {
-	if checkAuth(r) {
-		return true
+func authRequired(w http.ResponseWriter, r *http.Request, client string) (string, bool) {
+	user, ok := checkAuth(r)
+	if ok {
+		return user, true
 	}
 	reason := "missing credentials"
 	if r.Header.Get("Proxy-Authorization") != "" {
 		reason = "bad credentials"
 	}
-	logEvent("AUTHFAIL", client, r.Method, targetHost(r), reason)
+	logEvent("AUTHFAIL", client, user, r.Method, targetHost(r), reason)
 	w.Header().Set("Proxy-Authenticate", `Basic realm="crudeproxy"`)
 	http.Error(w, "Proxy authentication required", http.StatusProxyAuthRequired)
-	return false
+	return user, false
 }
