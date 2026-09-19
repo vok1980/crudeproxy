@@ -11,4 +11,4 @@ echo "================= failed ================="
 sudo awk '$3=="ERROR" {print $7}' /var/log/crudeproxy/access.log | sort | uniq -c | sort -rn
 
 echo "=============== authfail ================"
-sudo awk '$3=="AUTHFAIL" {print $4}' /var/log/crudeproxy/access.log | sort | uniq -c | sort -rn
+sudo awk '$3=="AUTHFAIL" {print $5, $4}' /var/log/crudeproxy/access.log | sort | uniq -c | sort -rn
