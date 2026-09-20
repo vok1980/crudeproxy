@@ -14,12 +14,14 @@ beyond the Go standard library.
 - Reloads the block list on `SIGHUP` without dropping active connections.
 - Closes idle `CONNECT` tunnels after a configurable timeout, so a stuck
   tunnel does not leak file descriptors or goroutines.
+- Optionally requires proxy authentication via the `Proxy-Authorization`
+  header (HTTP Basic).
 
 ## What it does not do
 
 - It does not decrypt HTTPS. Only the domain is visible for `CONNECT`
   requests, not the path, headers, or body.
-- It does not authenticate clients. Run it on a trusted network or behind
+- Authentication is optional clients. Run it on a trusted network or behind
   a firewall.
 - It does not cache responses. Every request goes to the origin.
 
@@ -50,12 +52,42 @@ curl http://example.com
 curl https://example.com
 ```
 
+## Authentication
+
+By default crudeproxy runs without authentication. To require proxy
+credentials, pass `-auth-file` with a path to a users file:
+
+```bash
+./crudeproxy -auth-file /etc/crudeproxy/users.txt
+```
+
+File format:
+
+```
+# comments start with #
+alice:secret
+bob:hunter2
+```
+
+Passwords may contain `:`. Everything after the first colon is treated
+as the password.
+
+Clients authenticate with the standard `Proxy-Authorization` header:
+
+```bash
+curl --proxy-user alice:secret -x http://127.0.0.1:8888 http://example.com
+export http_proxy=http://alice:secret@127.0.0.1:8888
+```
+
+The users file is reloaded on `SIGHUP` alongside the block list.
+
 ## Flags
 
 | Flag | Default | Description |
 | --- | --- | --- |
 | `-listen` | `127.0.0.1:8888` | Address to listen on. |
 | `-block` | `blocked.txt` | Path to the block list file. |
+| `-auth-file` | *(empty)* | Proxy users file. Empty disables authentication. |
 | `-log` | *(empty)* | Log file. Empty means stdout. |
 | `-tunnel-idle-timeout` | `10m` | Idle timeout for `CONNECT` tunnels. `0` disables it. |
 
@@ -89,38 +121,46 @@ kill -HUP $(pgrep crudeproxy)
 Tab-separated, one line per request:
 
 ```
-2026/09/15 12:46:24  ALLOW  127.0.0.1  GET      example.com      200
-2026/09/15 12:46:24  BLOCK  127.0.0.1  GET      facebook.com     http://facebook.com/
-2026/09/15 12:46:24  ALLOW  127.0.0.1  CONNECT  example.com:443
-2026/09/15 12:46:27  ERROR  127.0.0.1  CONNECT  unreachable.host  dial tcp: i/o timeout
+2026/09/15 12:46:24  ALLOW  user1  127.0.0.1  GET      example.com      200
+2026/09/15 12:46:24  BLOCK  user1  127.0.0.1  GET      facebook.com     http://facebook.com/
+2026/09/15 12:46:24  ALLOW  user1  127.0.0.1  CONNECT  example.com:443
+2026/09/15 12:46:27  ERROR  user1  127.0.0.1  CONNECT  unreachable.host  dial tcp: i/o timeout
 ```
 
 Fields:
 
 1. Timestamp
 2. Status: `ALLOW`, `BLOCK`, or `ERROR`
-3. Client IP
-4. HTTP method (`GET`, `POST`, `CONNECT`, ...)
-5. Target host (with port for `CONNECT`)
-6. Extra info: HTTP status code for `ALLOW` on plain HTTP, full URL for
+3. User (or `-` when authentication is disabled or the request
+   carried no credentials)
+4. Client IP
+5. HTTP method (`GET`, `POST`, `CONNECT`, ...)
+6. Target host (with port for `CONNECT`)
+7. Extra info: HTTP status code for `ALLOW` on plain HTTP, full URL for
    `BLOCK`, error message for `ERROR`. Empty for `ALLOW` on `CONNECT`.
 
 Top allowed domains:
 
 ```bash
-awk '$3=="ALLOW" {print $6}' access.log | sed 's/:.*//' | sort | uniq -c | sort -rn | head
+awk '$3=="ALLOW" {print $7}' access.log | sed 's/:.*//' | sort | uniq -c | sort -rn | head
 ```
 
 Blocked attempts:
 
 ```bash
-awk '$3=="BLOCK" {print $6}' access.log | sort | uniq -c | sort -rn
+awk '$3=="BLOCK" {print $7}' access.log | sort | uniq -c | sort -rn
 ```
 
 Errors:
 
 ```bash
-awk '$3=="ERROR" {print $6}' access.log | sort | uniq -c | sort -rn
+awk '$3=="ERROR" {print $7}' access.log | sort | uniq -c | sort -rn
+```
+
+Requests by user:
+
+```bash
+awk '{print $3}' access.log | sort | uniq -c | sort -rn
 ```
 
 ## Tests
@@ -144,10 +184,10 @@ and `curl`, `openssl`, and GNU `timeout`.
 
 ## Limitations
 
-- No authentication. Anyone who can reach the proxy can use it.
 - No TLS interception. HTTPS filtering is domain-only.
 - No caching.
 - No IPv6-specific handling beyond what Go's `net` package provides.
+- Passwords are stored in plaintext. Hash support is planned.
 
 ## License
 
