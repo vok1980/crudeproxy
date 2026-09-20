@@ -7,8 +7,8 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
-    name: Test (Go ${{ matrix.go-version }})
+  unit:
+    name: Unit (Go ${{ matrix.go-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -41,3 +41,22 @@ jobs:
 
       - name: Build
         run: CGO_ENABLED=0 go build -o crudeproxy .
+
+  e2e:
+    name: End-to-end
+    runs-on: ubuntu-24.04
+    needs: unit
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y openssl curl
+
+      - name: Run end-to-end tests
+        run: ./test.sh
