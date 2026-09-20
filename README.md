@@ -1,6 +1,7 @@
-# crudeproxy
-
+![CI](https://github.com/vok1980/crudeproxy/actions/workflows/ci.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+
+# crudeproxy
 
 A small forward HTTP/HTTPS proxy that blocks requests by domain and logs
 every connection. No MITM, no TLS interception, no external dependencies
