@@ -1,5 +1,5 @@
-![CI](https://github.com/vok1980/crudeproxy/actions/workflows/ci.yml/badge.svg)
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+[![CI](https://github.com/vok1980/crudeproxy/actions/workflows/ci.yml/badge.svg)](https://github.com/vok1980/crudeproxy/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/vok1980/crudeproxy/blob/main/LICENSE)
 
 # crudeproxy
 
