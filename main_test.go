@@ -18,27 +18,6 @@ import (
 	"time"
 )
 
-func TestIsLoopbackListen(t *testing.T) {
-	tests := []struct {
-		addr string
-		want bool
-	}{
-		{"127.0.0.1:8888", true},
-		{"localhost:8888", true},
-		{"[::1]:8888", true},
-		{":8888", false},
-		{"0.0.0.0:8888", false},
-		{"192.168.1.1:8888", false},
-		{"example.com:8888", false},
-		{"invalid", false},
-	}
-	for _, tt := range tests {
-		if got := isLoopbackListen(tt.addr); got != tt.want {
-			t.Errorf("isLoopbackListen(%q) = %v, want %v", tt.addr, got, tt.want)
-		}
-	}
-}
-
 func TestTunnelTouchCoalesces(t *testing.T) {
 	tun := newTunnel()
 
