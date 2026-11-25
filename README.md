@@ -180,8 +180,8 @@ Unit tests only:
 go test ./...
 ```
 
-The end-to-end script needs network access (`example.com`, `proof.ovh.net`)
-and `curl`, `openssl`, and GNU `timeout`.
+The end-to-end script needs network access (`example.com` and the transfer
+URL, configurable via `TRANSFER_URL`) and `curl`, `openssl`, and GNU `timeout`.
 
 ## Limitations
 
