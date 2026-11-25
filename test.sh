@@ -11,6 +11,9 @@ PROXY_PORT="${PROXY_PORT:-18888}"
 PROXY_ADDR="127.0.0.1:${PROXY_PORT}"
 PROXY_URL="http://${PROXY_ADDR}"
 IDLE_TIMEOUT=3s
+# File must be big enough that --limit-rate 100k takes longer than
+# IDLE_TIMEOUT; ~1.3 MB => ~13 s. Override with TRANSFER_URL=... .
+TRANSFER_URL="${TRANSFER_URL:-https://ftp.gnu.org/gnu/gzip/gzip-1.13.tar.gz}"
 LOG_FILE=$(mktemp -t crudeproxy-log.XXXXXX)
 BLOCK_FILE=$(mktemp -t crudeproxy-block.XXXXXX)
 PROXY_PID=""
@@ -27,6 +30,7 @@ trap cleanup EXIT
 
 pass() { printf '  \033[32mPASS\033[0m %s\n' "$1"; }
 fail() { printf '  \033[31mFAIL\033[0m %s\n' "$1"; FAILED=1; }
+skip() { printf '  \033[33mSKIP\033[0m %s\n' "$1"; }
 info() { printf '==> %s\n' "$1"; }
 
 require() {
@@ -127,12 +131,20 @@ fi
 
 # ---------------------------------------------------------------------------
 info "active transfer survives idle timeout"
-# 1MB at ~100 kB/s takes ~10s, well beyond the 3s idle window.
-if curl -s -o /dev/null -x "$PROXY_URL" --max-time 60 --limit-rate 100k \
-        https://proof.ovh.net/files/1Mb.dat; then
-    pass "rate-limited 1MB download completed"
+# Preflight: the test itself is only meaningful if the external host is
+# reachable directly (same way crudeproxy dials it). Use --range 0-0 so we
+# don't pull the whole file just to check, and --noproxy to bypass any
+# environment proxy the way crudeproxy does.
+if ! curl -fs -o /dev/null --noproxy '*' --max-time 15 --range 0-0 \
+        "$TRANSFER_URL" >/dev/null 2>&1; then
+    skip "$TRANSFER_URL unreachable; cannot test active transfer"
 else
-    fail "rate-limited download failed (idle timeout killed active transfer?)"
+    if curl -fs -o /dev/null -x "$PROXY_URL" --max-time 60 --limit-rate 100k \
+            "$TRANSFER_URL"; then
+        pass "rate-limited download completed"
+    else
+        fail "rate-limited download failed (idle timeout killed active transfer?)"
+    fi
 fi
 
 # ---------------------------------------------------------------------------
